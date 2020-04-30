@@ -98,33 +98,67 @@ def checktime(data):
         time.sleep(60)
 
 
+def send_msg(message, user):
+    try:
+        bot.send_message(
+            user, message, disable_web_page_preview=True, parse_mode="Markdown")
+        print(f"<{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}> Successfully sent message to '{user}'")
+        return None
+    except apihelper.ApiException as e:
+        e=str(e)
+        if e.split(sep='\n')[1]=='[b\'{"ok":false,"error_code":403,"description":"Forbidden: bot was blocked by the user"}\']':
+            return user
+        else:
+            print(f'''
+            ERROR with user "{user}"
+            -----------------
+            <{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}>
+            -----------------
+            {e}
+            -----------------
+            ''')
+            return None
+
+
+
 def sendnotification(event):
-    message = "Урок сейчас "
+    message = f"*{event['subject']}*\nУрок сейчас"
     if event['metat'] != None:
-        message += event['metat']
+        message += " "+event['metat']
     if event['group'] != None:
         message += f" у {event['group']} группы"
-    message += f" {event['subject']}, пароль: {event['passw']}\n{event['url']}"
+    message += f", пароль: `{event['passw']}`\n[НАЖМИ СЮДА, ЧТОБЫ ПОДКЛЮЧИТЬСЯ]({event['url']})"
     i = 0
+    blocklist = []
     for u in config['users']:
         if event['group'] != None:
             if event['subject'] == 'Английский':
                 if config['users'][u][0] == event['group']:
-                    bot.send_message(u, message, disable_web_page_preview=True)
+                    du = send_msg(message, u)
                     i += 1
             else:
                 if config['users'][u][1] == event['group']:
-                    bot.send_message(u, message, disable_web_page_preview=True)
+                    du = send_msg(message, u)
                     i += 1
         else:
-            bot.send_message(u, message, disable_web_page_preview=True)
+            du = send_msg(message, u)
             i += 1
-    print(f"Sended message '{message}' {i} times.")
+        if du!=None:
+            blocklist.append(du)
+    if len(blocklist)>0:
+        for b in blocklist:
+            config['users'].pop(b, None)
+        with open(filename, 'w') as outfile:
+            json.dump(config, outfile)
+        print(f"<{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}> Users {blocklist}, blocked")
+    print(f"<{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}> Sended message '{message}' {i} times.")
+
 
 
 @bot.message_handler(commands=['start'])
 def start(msg):
     user = msg.chat.id
+    print(f"<{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}> '@{msg.from_user.username}' chat pressed start handler")
     if str(user) not in config['users']:
         # print(config['users'], user)
         keyboard = types.InlineKeyboardMarkup()
@@ -168,26 +202,32 @@ def callback_inline(call):
                 user, "Выберите группу по математике/физике:", reply_markup=keyboard)
         elif call.data == "firstothgroup":
             config['users'][str(user)].append('1')
+            config['users'][str(user)].append(call.from_user.username)
             # config['users'][user].append(call.message.chat.from_user.username)
             with open(filename, 'w') as outfile:
                 json.dump(config, outfile)
             bot.send_message(
                 user, "✅ Вы подписались на уведомления об уроках в классе 10-3")
             print(f'''
-            User joined
-            ------------------------
+            User joined @{call.from_user.username}
+            ---------------------------
+            <{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}>
+            ---------------------------
             {config['users'][str(user)]}
             ''')
         elif call.data == "secondothgroup":
             config['users'][str(user)].append('2')
+            config['users'][str(user)].append(call.from_user.username)
             # config['users'][user].append(call.message.chat.from_user.username)
             with open(filename, 'w') as outfile:
                 json.dump(config, outfile)
             bot.send_message(
                 user, "✅ Вы подписались на уведомления об уроках в классе 10-3")
             print(f'''
-            User joined
-            ------------------------
+            User joined @{call.from_user.username}
+            ---------------------------
+            <{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}>
+            ---------------------------
             {config['users'][str(user)]}
             ''')
 
@@ -199,18 +239,25 @@ if __name__ == '__main__':
 		All rights reserved (c) 2020
 		--------------------------------
 	''')
-    print("Parsing data...")
+    print(f"<{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}> Parsing data...")
     data = parsetable(filepath)
-    print("Parsing complete. Staring checking thread...")
+    print(f"<{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}> Parsing complete. Staring checking thread...")
     t = threading.Thread(target=checktime, args=(data, ))
     t.start()
-    print("Done. Server ready!")
+    print(f"<{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}> Done. Server ready!")
+
+
+    # for u in config['users']:
+    #     send_msg("Тест, крыса найдена, проверка симтомов", u)
+
     while True:
         try:
             bot.polling(none_stop=True)
         except Exception as e:
             print(f'''
             BOT POLLING drop
+            -----------------
+            <{datetime.datetime.today().strftime('%d.%m.%Y %H:%M:%S')}>
             -----------------
             {e}
             -----------------
