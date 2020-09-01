@@ -2,6 +2,12 @@
 " VIM базовые настройки
 "=====================================================
 
+echo ">^.^<"
+
+packloadall  " Загрузка плагинов
+
+let mapleader = "\<Space>"  " Leader клавиша - пробел
+
 set nocompatible  " Включает работу стрелочек в режиме вставки
 set backspace=indent,eol,start "Включает backspace в режиме вставки
 
@@ -20,21 +26,12 @@ set cursorline  " Показывать линию курсора
 set ttyfast  " Что-то с прокруткой
 syntax on  " включить подсветку кода
 
-if has("gui_running")
-  set lines=50 columns=125
-endif
-
 tab sball  " Открывает новую вкладку для каждого буффера
 set switchbuf=useopen  " Для того что выше
 set incsearch  " инкреминтируемый поиск
 set hlsearch  " подсветка результатов поиска
 set nu  " показывать номера строк
 set scrolloff=5  " 5 строк при скролле за раз
-
-" Прячем панельки
-set guioptions-=m  " Меню
-set guioptions-=T  " Тулбар
-set guioptions-=r  " Скроллбары
 
 " Настройка табуляции
 set tabstop=4  " 4 пробела
@@ -43,26 +40,82 @@ set smarttab
 set expandtab  " Замена табов на пробелы
 set smartindent  " Автоматические отступы
 
-set colorcolumn=80  " Устанвливаем границу в 80 символов
+filetype plugin indent on  " Распознавание файлов для плагинов
 
 
 "---------=== Навигация по проекту/коду ===-----------
 
 cd /Users/tikhon/documents/projects  " Папка с проектами
 
+" Открытие файла через find
+set path+=**
+set wildmenu
+
 
 "-------------------=== Дизайн ===--------------------
 
 set guifont=Menlo\ Regular:h14
 
+set colorcolumn=80  " Устанвливаем границу в 80 символов
+
+" Прячем панельки
+set guioptions-=m  " Меню
+set guioptions-=T  " Тулбар
+set guioptions-=r  " Скроллбары справа
+set guioptions-=L  " Скроллбары слева
+
+if has("gui_running")
+  set lines=50 columns=125
+endif
+
+" TOUCHBAR
+if has("gui_running") 
+    amenu icon=NSTouchBarSidebarTemplate TouchBar.nerdtree :NERDTreeToggle<CR>
+    amenu icon=NSTouchBarGoBackTemplate TouchBar.back :bp<CR>
+    amenu TouchBar.// gcl
+    amenu icon=NSTouchBarBookmarksTemplate TouchBar.docs K<CR>
+    amenu icon=NSTouchBarComposeTemplate TouchBar.neww :new<CR>
+    amenu TouchBar.-flexspace2-   <Nop>
+    amenu icon=NSTouchBarAddTemplate TouchBar.addtemplate :tabe<CR>
+endif
+
 
 "=====================================================
 " Плагины
 "=====================================================
+"
+" VIMPLUG
+call plug#begin()
+
+Plug 'lervag/vimtex'
+let g:tex_flavor = 'latex'
+let g:vimtex_view_method = 'skim'
+
+Plug 'vim-pandoc/vim-pandoc'
+Plug 'vim-pandoc/vim-pandoc-syntax'
+
+call plug#end()
 
 " hzchirs/vim-material
-set background=light
 colorscheme vim-material
+" Проверяем включен ли darkmode
+if has("gui_running") && exists('##OSAppearanceChanged')
+    func! s:ChangeBackground()
+        if (v:os_appearance)
+            set background=dark
+        else 
+            set background=light
+        endif
+        redraw!
+        redrawtabline
+    endfunc
+
+    augroup AutoDark
+      autocmd OSAppearanceChanged * call s:ChangeBackground()
+    augroup END
+else
+    set background=light
+endif
 
 
 " vim-airline/vim-airline
@@ -108,8 +161,20 @@ let g:pymode_folding = 0
 " возможность запускать код
 let g:pymode_run = 0
 
+"Yggdroot/indentLine
+let g:indentLine_enabled = 1
+
+" prettier/vim-prettier
+nmap <Leader>pr <Plug>(Prettier)
+let g:prettier#exec_cmd_async = 1
+let g:prettier#quickfix_enabled = 0
+autocmd TextChanged,InsertLeave *.js,*.jsx,*.mjs,*.ts,*.tsx,*.css,*.less,*.scss,*.json,*.graphql,*.md,*.vue,*.yaml,*.html PrettierAsync
+
+" tpope/vim-commentary
+" mattn/emmet-vim
 " davidhalter/jedi-vim
 " alvan/vim-closetag
+" wlangstroth/vim-racket
 
 
 "=====================================================
@@ -130,10 +195,9 @@ autocmd FileType javascript set omnifunc=javascriptcomplete#CompleteJS
 autocmd BufNewFile,BufRead *.json setlocal ft=javascript
 
 " --- HTML ---
-autocmd FileType html set omnifunc=htmlcomplete#CompleteTags
-
+autocmd FileType html set omnifunc=htmlcomplete#CompleteTags 
 " --- template language support (SGML / XML too) ---
-autocmd FileType html,xhtml,xml,htmldjango,htmljinja,eruby,mako setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
+autocmd FileType html,xhtml,xml,htmldjango,htmljinja,eruby,mako setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2 
 autocmd bufnewfile,bufread *.rhtml setlocal ft=eruby
 autocmd BufNewFile,BufRead *.mako setlocal ft=mako
 autocmd BufNewFile,BufRead *.tmpl setlocal ft=htmljinja
@@ -142,7 +206,6 @@ let html_no_rendering=1
 let g:closetag_default_xml=1
 let g:sparkupNextMapping='<c-l>'
 autocmd FileType html,htmldjango,htmljinja,eruby,mako let b:closetag_html_style=1
-autocmd FileType html,xhtml,xml,htmldjango,htmljinja,eruby,mako source ~/.vim/scripts/closetag.vim
 
 " --- CSS ---
 autocmd FileType css set omnifunc=csscomplete#CompleteCSS
